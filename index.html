@@ -3,90 +3,223 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>admin panel</title>
+<title>bestosint // admin panel</title>
 <style>
-  body { background: #0a0505; color: #f0d9d9; font-family: monospace; padding: 20px; }
-  .box { max-width: 800px; margin: 0 auto; }
-  input { width: 100%; padding: 10px; margin-bottom: 10px; background: #140808; border: 1px solid #3d1a1a; color: #fff; box-sizing: border-box; }
-  button { padding: 10px 20px; background: #ff2a2a; border: none; color: #000; font-weight: bold; cursor: pointer; }
-  button:hover { background: #ff6b6b; }
-  .post { background: #1a0a0a; border: 1px solid #3d1a1a; padding: 15px; margin-bottom: 10px; border-radius: 4px; }
-  .post h3 { color: #ff2a2a; margin-bottom: 5px; }
-  .post .del { background: #ff5566; color: #fff; padding: 5px 10px; border: none; cursor: pointer; margin-top: 10px; border-radius: 4px; }
-  .post .del:hover { background: #ff2a2a; }
-  .hidden { display: none; }
-  p { margin-bottom: 5px; }
+  :root{
+    --bg:#0a0505; --panel:#140808; --panel2:#1a0a0a; --border:#2e1414; --border2:#3d1a1a;
+    --text:#f0d9d9; --muted:#a86a6a; --dim:#6b3a3a;
+    --accent:#ff2a2a; --accent2:#ff6b6b; --ok:#3ecf8e; --err:#ff5566;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;min-height:100vh;overflow:hidden;position:relative}
+
+  /* Матричный фон */
+  #matrixCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.06; pointer-events: none; }
+  #contentWrap { position: relative; z-index: 1; height: 100vh; overflow-y: auto; padding: 20px; }
+
+  /* Логин */
+  #loginScreen { display: flex; align-items: center; justify-content: center; height: 90vh; }
+  .login-box{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:24px;text-align:center;box-shadow:0 0 30px -10px var(--accent)}
+  .login-box h2{color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:20px;font-size:16px}
+  .login-box input{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:inherit;font-size:14px;margin-bottom:16px;text-align:center;outline:none}
+  .login-box input:focus{border-color:var(--accent);box-shadow: 0 0 10px rgba(255,42,42,.2)}
+  .login-box button{width:100%;padding:12px;background:var(--accent);color:#0a0505;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:1px}
+  .login-box button:hover{filter:brightness(1.15); box-shadow: 0 0 15px var(--accent)}
+
+  /* Админка */
+  #adminScreen { display: none; max-width: 800px; margin: 0 auto; }
+  .topbar{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 0 20px -10px var(--accent)}
+  .topbar h1{font-size:18px;color:var(--accent);text-transform:uppercase;text-shadow: 0 0 10px var(--accent)}
+  
+  .btn{padding:9px 16px;border:1px solid var(--border2);border-radius:4px;background:var(--panel2);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--accent);box-shadow: 0 0 10px rgba(255,42,42,.2)}
+  .btn-danger{border-color:var(--err);color:var(--err)}
+  .btn-danger:hover{background:rgba(255,85,102,.1)}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;}
+  .panel h3{font-size:14px;color:var(--accent);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;display:flex;justify-content:space-between;}
+  .panel h3 span{color:var(--muted);font-size:11px;font-weight:normal}
+  
+  .list{display:flex;flex-direction:column;gap:10px;max-height: 600px; overflow-y: auto;}
+  .item{background:var(--panel2);border:1px solid var(--border2);border-radius:6px;padding:12px;position:relative;transition:.15s}
+  .item:hover{border-color:var(--accent)}
+  .item .title{font-weight:bold;color:#fff;margin-bottom:4px;font-size:14px;}
+  .item .meta{font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:10px}
+  .item .body{font-size:12px;color:var(--text);margin-bottom:10px;white-space:pre-wrap;background:var(--bg);padding:8px;border-radius:4px;border:1px solid var(--border)}
+  .item .actions{display:flex;gap:8px}
+  .item .actions button{padding:6px 12px;font-size:11px;cursor:pointer;background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:4px;transition:.15s}
+  .item .actions button:hover{color:var(--accent);border-color:var(--accent)}
+  .item .actions button.del{color:var(--err);border-color:var(--err)}
+  .item .actions button.del:hover{background:rgba(255,85,102,.1)}
+
+  /* Скроллбар */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
 </style>
 </head>
 <body>
 
-<div id="loginScreen" class="box">
-  <h2 style="color:#ff2a2a; margin-bottom:20px;">Вход в админку</h2>
-  <input type="password" id="passInput" placeholder="Пароль (admin123)">
-  <button onclick="doLogin()">Войти</button>
-</div>
+<canvas id="matrixCanvas"></canvas>
 
-<div id="adminScreen" class="box hidden">
-  <h2 style="color:#ff2a2a; margin-bottom:20px;">Управление пастами</h2>
-  <button onclick="loadPosts()" style="margin-bottom:20px;">Обновить список</button>
-  <div id="postsList"></div>
+<div id="contentWrap">
+  <div id="loginScreen">
+    <div class="login-box">
+      <h2>admin access</h2>
+      <input type="password" id="passInput" placeholder="введи пароль (admin123)">
+      <button id="loginBtn">войти</button>
+    </div>
+  </div>
+
+  <div id="adminScreen">
+    <div class="topbar">
+      <h1>central command</h1>
+      <div>
+        <button class="btn" id="reloadBtn">обновить</button>
+        <button class="btn btn-danger" id="logoutBtn">выход</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Глобальные пасты <span id="statusTxt">загрузка...</span></h3>
+      <div class="list" id="postsList"></div>
+    </div>
+  </div>
 </div>
 
 <script>
+(function(){
+  "use strict";
+
   const ADMIN_PASSWORD = "admin123";
   const KEY_POSTS = "bestosint_posts_global";
 
-  function doLogin() {
-    var pass = document.getElementById("passInput").value;
-    if (pass === ADMIN_PASSWORD) {
-      document.getElementById("loginScreen").classList.add("hidden");
-      document.getElementById("adminScreen").classList.remove("hidden");
-      loadPosts();
-    } else {
-      alert("Неверный пароль");
+  var ui = {
+    loginScreen: document.getElementById("loginScreen"),
+    adminScreen: document.getElementById("adminScreen"),
+    passInput: document.getElementById("passInput"),
+    loginBtn: document.getElementById("loginBtn"),
+    logoutBtn: document.getElementById("logoutBtn"),
+    reloadBtn: document.getElementById("reloadBtn"),
+    postsList: document.getElementById("postsList"),
+    statusTxt: document.getElementById("statusTxt")
+  };
+
+  // ===== МАТРИЦА =====
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+  let width, height, columns, drops;
+  const chars = "01BESTOISNT".split("");
+  const fontSize = 14;
+
+  function resizeCanvas() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    columns = Math.floor(width / fontSize);
+    drops = [];
+    for (let i = 0; i < columns; i++) drops[i] = 1;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawMatrix() {
+    ctx.fillStyle = "rgba(10, 5, 5, 0.05)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "#ff2a2a";
+    ctx.font = fontSize + "px monospace";
+    for (let i = 0; i < drops.length; i++) {
+      const text = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
     }
   }
+  setInterval(drawMatrix, 50);
 
+  // ===== ЛОГИН =====
+  ui.loginBtn.addEventListener("click", () => {
+    if (ui.passInput.value === ADMIN_PASSWORD) {
+      sessionStorage.setItem("bst_admin_auth", "1");
+      showAdmin();
+    } else {
+      alert("неверный пароль");
+    }
+  });
+  ui.passInput.addEventListener("keydown", (e) => { if(e.key === "Enter") ui.loginBtn.click(); });
+  
+  ui.logoutBtn.addEventListener("click", () => { 
+    sessionStorage.removeItem("bst_admin_auth"); 
+    location.reload(); 
+  });
+
+  function checkAuth() {
+    if (sessionStorage.getItem("bst_admin_auth") === "1") showAdmin();
+  }
+  
+  function showAdmin() {
+    ui.loginScreen.style.display = "none";
+    ui.adminScreen.style.display = "block";
+    loadPosts();
+  }
+
+  // ===== РАБОТА С ПАСТАМИ =====
   function loadPosts() {
+    ui.statusTxt.textContent = "загрузка...";
+    ui.postsList.innerHTML = "";
+    
     var posts = [];
     try {
       var raw = localStorage.getItem(KEY_POSTS);
       if (raw) posts = JSON.parse(raw);
     } catch(e) {}
 
-    var list = document.getElementById("postsList");
-    list.innerHTML = "";
-
-    if (posts.length === 0) {
-      list.innerHTML = "<p style='color:#6b3a3a;'>Паст пока нет.</p>";
+    if (!posts.length) {
+      ui.statusTxt.textContent = "пусто";
+      ui.postsList.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Паст пока нет.</div>';
       return;
     }
 
-    posts.forEach(function(p) {
+    ui.statusTxt.textContent = `найдено: ${posts.length}`;
+    
+    // Сортируем новые сверху
+    posts.sort((a,b) => b.createdAt - a.createdAt);
+
+    posts.forEach(p => {
       var el = document.createElement("div");
-      el.className = "post";
+      el.className = "item";
       el.innerHTML = `
-        <h3>#${p.id} ${p.title}</h3>
-        <p style="color:#a86a6a; font-size:12px;">Автор: @${p.author} | ${new Date(p.createdAt).toLocaleString()}</p>
-        <p>${p.body}</p>
-        <button class="del" onclick="deletePost(${p.id})">Удалить</button>
+        <div class="title">#${p.id} ${p.title}</div>
+        <div class="meta"><span>Автор: @${p.author}</span> <span>${new Date(p.createdAt).toLocaleString()}</span></div>
+        <div class="body">${p.body}</div>
+        <div class="actions">
+          <button class="del" onclick="deletePost(${p.id})">Удалить</button>
+        </div>
       `;
-      list.appendChild(el);
+      ui.postsList.appendChild(el);
     });
   }
 
-  function deletePost(id) {
+  window.deletePost = function(id) {
     if (!confirm("Удалить пасту #" + id + "?")) return;
+    
     var posts = [];
     try {
       var raw = localStorage.getItem(KEY_POSTS);
       if (raw) posts = JSON.parse(raw);
     } catch(e) {}
 
-    posts = posts.filter(function(p) { return p.id !== id; });
+    posts = posts.filter(p => p.id !== id);
     localStorage.setItem(KEY_POSTS, JSON.stringify(posts));
+    
     loadPosts();
-  }
+  };
+
+  ui.reloadBtn.addEventListener("click", loadPosts);
+  checkAuth();
+
+})();
 </script>
 </body>
 </html>
