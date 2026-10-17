@@ -7,12 +7,15 @@
 <style>
   body { background: #0a0505; color: #f0d9d9; font-family: monospace; padding: 20px; }
   .box { max-width: 800px; margin: 0 auto; }
-  input { width: 100%; padding: 10px; margin-bottom: 10px; background: #140808; border: 1px solid #3d1a1a; color: #fff; }
+  input { width: 100%; padding: 10px; margin-bottom: 10px; background: #140808; border: 1px solid #3d1a1a; color: #fff; box-sizing: border-box; }
   button { padding: 10px 20px; background: #ff2a2a; border: none; color: #000; font-weight: bold; cursor: pointer; }
+  button:hover { background: #ff6b6b; }
   .post { background: #1a0a0a; border: 1px solid #3d1a1a; padding: 15px; margin-bottom: 10px; border-radius: 4px; }
   .post h3 { color: #ff2a2a; margin-bottom: 5px; }
-  .post .del { background: #ff5566; color: #fff; padding: 5px 10px; border: none; cursor: pointer; margin-top: 10px; }
+  .post .del { background: #ff5566; color: #fff; padding: 5px 10px; border: none; cursor: pointer; margin-top: 10px; border-radius: 4px; }
+  .post .del:hover { background: #ff2a2a; }
   .hidden { display: none; }
+  p { margin-bottom: 5px; }
 </style>
 </head>
 <body>
