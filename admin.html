@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bestosint // central admin</title>
+<style>
+  :root{
+    --bg:#0a0505; --panel:#140808; --panel2:#1a0a0a; --border:#2e1414; --border2:#3d1a1a;
+    --text:#f0d9d9; --muted:#a86a6a; --dim:#6b3a3a;
+    --accent:#ff2a2a; --accent2:#ff6b6b; --ok:#3ecf8e; --err:#ff5566;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;min-height:100vh;padding:20px}
+
+  #loginScreen { display: flex; align-items: center; justify-content: center; height: 90vh; }
+  .login-box{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:24px;text-align:center;box-shadow:0 0 30px -10px var(--accent)}
+  .login-box h2{color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:20px;font-size:16px}
+  .login-box input{width:100%;padding:12px;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:inherit;font-size:14px;margin-bottom:16px;text-align:center;outline:none}
+  .login-box input:focus{border-color:var(--accent)}
+  .login-box button{width:100%;padding:12px;background:var(--accent);color:#0a0505;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:1px}
+  .login-box button:hover{filter:brightness(1.15)}
+
+  #adminScreen { display: none; max-width: 1000px; margin: 0 auto; }
+  .topbar{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+  .topbar h1{font-size:18px;color:var(--accent);text-transform:uppercase}
+  .btn{padding:9px 16px;border:1px solid var(--border2);border-radius:4px;background:var(--panel2);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-danger{border-color:var(--err);color:var(--err)}
+  .btn-danger:hover{background:rgba(255,85,102,.1)}
+  .btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px}
+  .panel h3{font-size:14px;color:var(--accent);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;display:flex;justify-content:space-between}
+  
+  .list{display:flex;flex-direction:column;gap:10px;max-height: 600px; overflow-y: auto;}
+  .item{background:var(--panel2);border:1px solid var(--border2);border-radius:6px;padding:12px;position:relative}
+  .item .title{font-weight:bold;color:#fff;margin-bottom:4px}
+  .item .meta{font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:10px}
+  .item .body{font-size:12px;color:var(--text);margin-bottom:10px;max-height:100px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;}
+  .item .actions{display:flex;gap:8px}
+  .item .actions button{padding:4px 8px;font-size:11px;cursor:pointer;background:var(--bg);border:1px solid var(--border2);color:var(--text);border-radius:4px}
+  .item .actions button:hover{color:var(--accent);border-color:var(--accent)}
+
+  .status-bar { font-size:11px; color:var(--muted); margin-bottom:15px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>central admin</h2>
+    <input type="password" id="passInput" placeholder="пароль доступа">
+    <button id="loginBtn">войти</button>
+  </div>
+</div>
+
+<div id="adminScreen">
+  <div class="topbar">
+    <h1>database management</h1>
+    <button class="btn" id="logoutBtn">выход</button>
+  </div>
+
+  <div class="status-bar" id="statusBar">Ожидание...</div>
+
+  <div class="panel">
+    <h3>Все пасты <span id="postCount">0</span></h3>
+    <div class="list" id="postsList"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  
+  // ==========================================
+  // НАСТРОЙКИ (ЗАПОЛНИ ЭТО!)
+  // ==========================================
+  const ADMIN_PASSWORD = "admin123"; 
+  const GITHUB_TOKEN = "ТВОЙ_ТОКЕН_СЮДА"; // Из Шага 2
+  const GITHUB_OWNER = "kkrassq111-boop"; // Твой ник
+  const GITHUB_REPO = "admin-panel";      // Имя репозитория, который ты создал
+  const FILE_PATH = "pastes.json";        // Файл базы
+  // ==========================================
+
+  var ui = {
+    loginScreen: document.getElementById("loginScreen"),
+    adminScreen: document.getElementById("adminScreen"),
+    passInput: document.getElementById("passInput"),
+    loginBtn: document.getElementById("loginBtn"),
+    logoutBtn: document.getElementById("logoutBtn"),
+    postsList: document.getElementById("postsList"),
+    postCount: document.getElementById("postCount"),
+    statusBar: document.getElementById("statusBar")
+  };
+
+  ui.loginBtn.addEventListener("click", () => {
+    if (ui.passInput.value === ADMIN_PASSWORD) {
+      sessionStorage.setItem("bst_admin_auth", "1");
+      showAdmin();
+    } else {
+      alert("неверный пароль");
+    }
+  });
+  ui.passInput.addEventListener("keydown", (e) => { if(e.key === "Enter") ui.loginBtn.click(); });
+  ui.logoutBtn.addEventListener("click", () => { sessionStorage.removeItem("bst_admin_auth"); location.reload(); });
+
+  function checkAuth() {
+    if (sessionStorage.getItem("bst_admin_auth") === "1") showAdmin();
+  }
+  function showAdmin() {
+    ui.loginScreen.style.display = "none";
+    ui.adminScreen.style.display = "block";
+    loadPosts();
+  }
+
+  // ===== GITHUB API =====
+  async function getFileSha() {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`, {
+        headers: { "Authorization": `token ${GITHUB_TOKEN}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.sha;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  async function loadPosts() {
+    ui.statusBar.textContent = "Загрузка базы с GitHub...";
+    ui.postsList.innerHTML = "";
+    
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${FILE_PATH}?t=${Date.now()}`);
+      if (res.status === 404) {
+        ui.statusBar.textContent = "Файл базы еще не создан (пусто)";
+        ui.postCount.textContent = "0";
+        ui.postsList.innerHTML = '<div style="color:var(--muted)">Паст нет.</div>';
+        return;
+      }
+      
+      const posts = await res.json();
+      ui.statusBar.textContent = `Успешно загружено: ${posts.length}`;
+      ui.postCount.textContent = posts.length;
+      
+      if (!posts.length) {
+        ui.postsList.innerHTML = '<div style="color:var(--muted)">Паст нет.</div>';
+        return;
+      }
+
+      posts.sort((a,b) => b.createdAt - a.createdAt);
+
+      posts.forEach(p => {
+        var el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="title">#${p.id} ${p.title}</div>
+          <div class="meta"><span>Автор: @${p.author}</span> <span>${new Date(p.createdAt).toLocaleString()}</span></div>
+          <div class="body">${p.body}</div>
+          <div class="actions">
+            <button class="del-btn" data-id="${p.id}" style="color:var(--err);border-color:var(--err)">Удалить из базы</button>
+          </div>
+        `;
+        ui.postsList.appendChild(el);
+      });
+
+      // Привязываем события удаления
+      document.querySelectorAll(".del-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => deletePost(e.target.getAttribute("data-id")));
+      });
+
+    } catch(e) {
+      ui.statusBar.textContent = "Ошибка сети: " + e.message;
+    }
+  }
+
+  async function deletePost(id) {
+    if (!confirm("Удалить пасту #" + id + " из базы навсегда?")) return;
+    
+    ui.statusBar.textContent = "Удаление...";
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/${FILE_PATH}?t=${Date.now()}`);
+      let posts = await res.json();
+      
+      posts = posts.filter(p => p.id !== id);
+      
+      const sha = await getFileSha();
+      if (!sha) throw new Error("Нет доступа к файлу (проверь токен)");
+
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(posts, null, 2))));
+      
+      const updateRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `token ${GITHUB_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Admin: delete paste #${id}`,
+          content: content,
+          sha: sha
+        })
+      });
+
+      if (!updateRes.ok) throw new Error("Ошибка обновления (токен неверный?)");
+
+      alert("Паста удалена!");
+      loadPosts(); 
+
+    } catch(e) {
+      alert("Ошибка: " + e.message);
+      ui.statusBar.textContent = "Ошибка удаления";
+    }
+  }
+
+  checkAuth();
+})();
+</script>
+</body>
+</html>
